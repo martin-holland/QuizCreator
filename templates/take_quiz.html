@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block title %}Take Quiz - {{ title }}{% endblock %}
+
+{% block content %}
+<div class="take-quiz-page">
+    <div id="quiz-container">
+        <p style="text-align: center; color: var(--text-secondary); padding: 2rem;">Loading quiz...</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const API_BASE = '/api/v1';
+const quizId = {{ quiz_id }};
+let quizData = null;
+let selectedAnswers = {};
+
+// Load quiz
+async function loadQuiz() {
+    try {
+        const response = await fetch(`${API_BASE}/quizzes/${quizId}/take`);
+        const data = await response.json();
+        
+        if (data.success) {
+            quizData = data.data;
+            renderQuiz();
+        } else {
+            document.getElementById('quiz-container').innerHTML = `<p>Error: ${data.error}</p>`;
+        }
+    } catch (error) {
+        document.getElementById('quiz-container').innerHTML = `<p>Error loading quiz: ${error.message}</p>`;
+    }
+}
+
+function renderQuiz() {
+    const container = document.getElementById('quiz-container');
+    
+    if (!quizData || !quizData.questions || quizData.questions.length === 0) {
+        container.innerHTML = '<p>No questions in this quiz.</p>';
+        return;
+    }
+    
+    container.innerHTML = `
+        <div class="quiz-header">
+            <h2>${quizData.title}</h2>
+            <p>${quizData.description || ''}</p>
+            <p><strong>Questions:</strong> ${quizData.questions.length}</p>
+        </div>
+        
+        <form id="quiz-form">
+            ${quizData.questions.map((question, qIdx) => `
+                <div class="question-card">
+                    <h3>Question ${qIdx + 1}</h3>
+                    <p class="question-text">${question.question_text}</p>
+                    <div class="answers">
+                        ${question.answers.map((answer, aIdx) => `
+                            <div class="answer-option">
+                                <input 
+                                    type="checkbox" 
+                                    id="q${question.id}-a${answer.id}" 
+                                    name="q${question.id}" 
+                                    value="${answer.id}"
+                                    onchange="updateSelection(${question.id}, ${answer.id}, this.checked)"
+                                >
+                                <label for="q${question.id}-a${answer.id}">${answer.text}</label>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('')}
+            
+            <div class="quiz-submit">
+                <button type="submit" class="btn btn-primary btn-large">Submit Quiz</button>
+            </div>
+        </form>
+    `;
+}
+
+function updateSelection(questionId, answerId, checked) {
+    if (!selectedAnswers[questionId]) {
+        selectedAnswers[questionId] = [];
+    }
+    
+    if (checked) {
+        selectedAnswers[questionId].push(answerId);
+    } else {
+        selectedAnswers[questionId] = selectedAnswers[questionId].filter(id => id !== answerId);
+    }
+}
+
+// Submit quiz
+document.addEventListener('submit', async function(e) {
+    if (e.target.id !== 'quiz-form') return;
+    e.preventDefault();
+    
+    // Convert to format API expects
+    const submitData = {};
+    for (const [qId, aIds] of Object.entries(selectedAnswers)) {
+        if (aIds.length > 0) {
+            submitData[parseInt(qId)] = aIds.map(id => parseInt(id));
+        }
+    }
+    
+    try {
+        const response = await fetch(`${API_BASE}/quizzes/${quizId}/submit`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({selected_answers: submitData})
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            // Redirect to results page
+            window.location.href = `/quiz-attempts/${data.data.id}`;
+        } else {
+            alert('Error submitting quiz: ' + data.error);
+        }
+    } catch (error) {
+        alert('Error submitting quiz: ' + error.message);
+    }
+});
+
+// Load quiz on page load
+loadQuiz();
+</script>
+{% endblock %}
+

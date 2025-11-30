@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block title %}Quiz Results - {{ title }}{% endblock %}
+
+{% block content %}
+<div class="quiz-results-page">
+    <div id="results-container">
+        <p style="text-align: center; color: var(--text-secondary); padding: 2rem;">Loading results...</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const API_BASE = '/api/v1';
+const attemptId = {{ attempt_id }};
+
+async function loadResults() {
+    try {
+        const response = await fetch(`${API_BASE}/quiz-attempts/${attemptId}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            renderResults(data.data);
+        } else {
+            document.getElementById('results-container').innerHTML = `<p>Error: ${data.error}</p>`;
+        }
+    } catch (error) {
+        document.getElementById('results-container').innerHTML = `<p>Error loading results: ${error.message}</p>`;
+    }
+}
+
+function renderResults(attempt) {
+    const quiz = attempt.quiz;
+    const maxScore = quiz.questions.length; // Max 1.0 per question
+    const percentage = (attempt.total_score / maxScore * 100).toFixed(1);
+    
+    const container = document.getElementById('results-container');
+    
+    container.innerHTML = `
+        <div class="results-header">
+            <h2>${quiz.title}</h2>
+            <div class="score-display">
+                <div class="score-circle">
+                    <h3>${attempt.total_score.toFixed(2)}</h3>
+                    <p>out of ${maxScore.toFixed(2)}</p>
+                    <p class="percentage">${percentage}%</p>
+                </div>
+            </div>
+            <p><small>Completed: ${new Date(attempt.completed_at).toLocaleString()}</small></p>
+        </div>
+        
+        <div class="questions-results">
+            ${quiz.questions.map((question, qIdx) => {
+                const answerDetail = attempt.answer_details[question.id];
+                const questionScore = answerDetail ? answerDetail.score : 0;
+                const selectedIds = answerDetail ? answerDetail.selected_answer_ids : [];
+                
+                return `
+                    <div class="question-result">
+                        <h3>Question ${qIdx + 1} <span class="question-score">Score: ${questionScore.toFixed(2)}</span></h3>
+                        <p class="question-text">${question.question_text}</p>
+                        <div class="answers-results">
+                            ${question.answers.map(answer => {
+                                const isSelected = selectedIds.includes(answer.id);
+                                const isCorrect = answer.is_correct;
+                                let className = 'answer-result';
+                                let icon = '';
+                                
+                                if (isSelected && isCorrect) {
+                                    className += ' correct-selected';
+                                    icon = '✅';
+                                } else if (isSelected && !isCorrect) {
+                                    className += ' incorrect-selected';
+                                    icon = '❌';
+                                } else if (isCorrect) {
+                                    className += ' correct-not-selected';
+                                    icon = '✓';
+                                } else {
+                                    className += ' incorrect-not-selected';
+                                }
+                                
+                                return `
+                                    <div class="${className}">
+                                        ${icon} ${answer.text}
+                                        <span class="points">(${answer.points > 0 ? '+' : ''}${answer.points})</span>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                `;
+            }).join('')}
+        </div>
+        
+        <div class="results-actions">
+            <a href="/quizzes/${quiz.id}/take" class="btn btn-primary">Retake Quiz</a>
+            <a href="/quizzes" class="btn btn-secondary">Back to Quizzes</a>
+        </div>
+    `;
+}
+
+loadResults();
+</script>
+{% endblock %}
+

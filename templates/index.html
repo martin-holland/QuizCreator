@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}Home - {{ title }}{% endblock %}
+
+{% block content %}
+<div class="hero">
+    <h1>AI-Powered Quiz Generator</h1>
+    <p class="subtitle">Transform any content into interactive quizzes with intelligent question generation</p>
+</div>
+
+<div class="features">
+    <div class="feature-card">
+        <div style="font-size: 3rem; margin-bottom: 1rem;">📄</div>
+        <h3>Submit Sources</h3>
+        <p>Upload PDFs, Word documents, images, or provide URLs. Our system automatically extracts and processes the content.</p>
+        <a href="{{ url_for('main.sources_page') }}" class="btn btn-primary">Get Started</a>
+    </div>
+    
+    <div class="feature-card">
+        <div style="font-size: 3rem; margin-bottom: 1rem;">🤖</div>
+        <h3>AI Question Generation</h3>
+        <p>Advanced AI generates 5 comprehensive multiple-choice questions per topic, each with 6 answer options (4 correct, 2 incorrect).</p>
+    </div>
+    
+    <div class="feature-card">
+        <div style="font-size: 3rem; margin-bottom: 1rem;">📝</div>
+        <h3>Interactive Quizzes</h3>
+        <p>Take quizzes with real-time feedback. Review detailed results showing correct answers and your performance.</p>
+        <a href="{{ url_for('main.quizzes_page') }}" class="btn btn-primary">Browse Quizzes</a>
+    </div>
+</div>
+
+<div class="info-section">
+    <h2>How It Works</h2>
+    <ol>
+        <li><strong>Submit a source</strong> - Upload a document or provide a URL</li>
+        <li><strong>Generate questions</strong> - AI creates 5 questions per topic from your content</li>
+        <li><strong>Create a quiz</strong> - Select questions to include in your quiz</li>
+        <li><strong>Take the quiz</strong> - Answer questions and see your score</li>
+    </ol>
+    
+    <h3>Scoring Rules</h3>
+    <ul>
+        <li>Each question has 6 possible answers</li>
+        <li>4 correct answers: +0.25 points each</li>
+        <li>2 incorrect answers: -0.5 points each</li>
+        <li>Minimum score per question: 0 (no negative scores)</li>
+    </ul>
+</div>
+{% endblock %}

@@ -1,0 +1,18 @@
+# Nixpacks configuration for Railway
+# This ensures system dependencies are installed
+
+[phases.setup]
+nixPkgs = ["python311", "tesseract", "chromium"]
+
+[phases.install]
+cmds = [
+  "pip install -r requirements.txt",
+  "playwright install chromium"
+]
+
+[phases.build]
+cmds = []
+
+[start]
+cmd = "gunicorn app:app --bind 0.0.0.0:$PORT"
+

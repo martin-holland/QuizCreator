@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{{ title or 'Flask App' }}{% endblock %}</title>
+    
+    <!-- Theme CSS - Design tokens and variables -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
+    <!-- Main CSS - Component styles -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <!-- Navigation - similar to React's Navbar component -->
+    <nav class="navbar">
+        <div class="container">
+            <a href="{{ url_for('main.index') }}" class="logo">Quiz App</a>
+            <ul class="nav-links">
+                <li><a href="{{ url_for('main.index') }}">Home</a></li>
+                <li><a href="{{ url_for('main.sources_page') }}">Sources</a></li>
+                <li><a href="{{ url_for('main.quizzes_page') }}">Quizzes</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Main content - similar to React's {children} or <Outlet /> -->
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 Quiz Application. Built with Flask & OpenAI.</p>
+        </div>
+    </footer>
+
+    <!-- Static JS - similar to React's component scripts -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>
+

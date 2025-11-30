@@ -1,0 +1,575 @@
+{% extends "base.html" %}
+
+{% block title %}Quizzes - {{ title }}{% endblock %}
+
+{% block content %}
+<div class="quizzes-page">
+    <div class="page-header">
+        <h1>Quizzes</h1>
+        <p class="page-subtitle">Create and manage your quiz collections</p>
+    </div>
+    
+    <!-- Tab Navigation -->
+    <div class="tabs">
+        <button class="tab-button active" onclick="switchTab('create')" id="tab-create">Create Quiz</button>
+        <button class="tab-button" onclick="switchTab('list')" id="tab-list">My Quizzes</button>
+    </div>
+    
+    <!-- Create Quiz Tab -->
+    <div id="tab-content-create" class="tab-content active">
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">Create New Quiz</h2>
+            </div>
+        <form id="create-quiz-form">
+            <div class="form-group">
+                <label>Quiz Title:</label>
+                <input type="text" id="quiz-title" required>
+            </div>
+            <div class="form-group">
+                <label>Description:</label>
+                <textarea id="quiz-description"></textarea>
+            </div>
+            <div class="form-group">
+                <label>Select Questions:</label>
+                <div style="margin-bottom: 1rem; display: flex; flex-direction: column; gap: 1rem;">
+                    <!-- Search and Filter Controls -->
+                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+                        <input 
+                            type="text" 
+                            id="question-search" 
+                            placeholder="Search questions..." 
+                            style="flex: 1; min-width: 200px; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: var(--radius-md);"
+                            oninput="filterQuestions()"
+                        >
+                        <select 
+                            id="topic-filter" 
+                            style="padding: 0.5rem; border: 1px solid var(--border-color); border-radius: var(--radius-md); min-width: 150px;"
+                            onchange="filterQuestions()"
+                        >
+                            <option value="">All Topics</option>
+                        </select>
+                        <button type="button" onclick="expandAllTopics()" class="btn btn-secondary btn-small">Expand All</button>
+                        <button type="button" onclick="collapseAllTopics()" class="btn btn-secondary btn-small">Collapse All</button>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+                        <div id="filter-info" style="color: var(--text-secondary); font-size: 0.875rem;">
+                            Showing <span id="visible-count">0</span> of <span id="total-count">0</span> questions
+                        </div>
+                        <div id="selected-count" style="color: var(--text-secondary); font-weight: 500;">
+                            <span id="selected-number">0</span> question(s) selected
+                        </div>
+                    </div>
+                </div>
+                <div id="questions-list"></div>
+            </div>
+            <button type="submit" class="btn btn-primary">Create Quiz</button>
+        </form>
+        </div>
+    </div>
+    
+    <!-- Quizzes List Tab -->
+    <div id="tab-content-list" class="tab-content">
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">Your Quizzes</h2>
+            </div>
+            <div id="quizzes-list">
+                <p style="text-align: center; color: var(--text-secondary); padding: 2rem;">Loading quizzes...</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const API_BASE = '/api/v1';
+let allQuestions = [];
+let allTopicsData = []; // Store all topics for filtering
+
+// Load all questions grouped by topic
+async function loadAllQuestions() {
+    try {
+        // Get all sources
+        const sourcesRes = await fetch(`${API_BASE}/sources`);
+        const sourcesData = await sourcesRes.json();
+        
+        if (!sourcesData.success) return;
+        
+        // Group questions by topic
+        const topicsMap = new Map();
+        
+        // Get topics for each source
+        for (const source of sourcesData.data) {
+            const topicsRes = await fetch(`${API_BASE}/sources/${source.id}/topics`);
+            const topicsData = await topicsRes.json();
+            
+            if (topicsData.success) {
+                for (const topic of topicsData.data) {
+                    // Ensure questions array exists and has items
+                    if (!topic.questions) {
+                        topic.questions = [];
+                    }
+                    if (topic.questions.length > 0) {
+                        // Get source display name (URL or filename)
+                        let sourceDisplayName = source.title;
+                        let sourceUrl = null;
+                        
+                        if (source.type === 'url') {
+                            // For URLs, show the full URL from content or metadata
+                            sourceUrl = source.metadata?.url || source.content || source.title;
+                            sourceDisplayName = sourceUrl;
+                        } else if (source.metadata?.original_filename) {
+                            // For files, show the original filename
+                            sourceDisplayName = source.metadata.original_filename;
+                        } else if (source.title && source.title !== source.content?.substring(0, 100)) {
+                            // Fallback: use title if it's different from content preview
+                            sourceDisplayName = source.title;
+                        }
+                        
+                        // Store topic with its questions
+                        topicsMap.set(topic.id, {
+                            id: topic.id,
+                            title: topic.title,
+                            description: topic.description || '',
+                            source_title: source.title,
+                            source_display_name: sourceDisplayName,
+                            source_url: sourceUrl,
+                            source_type: source.type,
+                            source_id: source.id,
+                            questions: topic.questions.map(q => ({
+                                ...q,
+                                topic_id: topic.id,
+                                topic_title: topic.title,
+                                source_title: source.title
+                            }))
+                        });
+                    }
+                }
+            }
+        }
+        
+        // Display questions grouped by topic
+        const questionsList = document.getElementById('questions-list');
+        if (topicsMap.size === 0) {
+            questionsList.innerHTML = '<p style="text-align: center; color: var(--text-secondary); padding: 2rem;">No questions available. Generate questions from sources first!</p>';
+            if (document.getElementById('total-count')) {
+                document.getElementById('total-count').textContent = '0';
+            }
+            if (document.getElementById('visible-count')) {
+                document.getElementById('visible-count').textContent = '0';
+            }
+            return;
+        }
+        
+        // Store topics data for later use
+        window.topicsData = Array.from(topicsMap.values());
+        allTopicsData = Array.from(topicsMap.values());
+        
+        // Populate topic filter dropdown
+        const topicFilter = document.getElementById('topic-filter');
+        if (topicFilter) {
+            const existingOptions = topicFilter.querySelectorAll('option:not(:first-child)');
+            existingOptions.forEach(opt => opt.remove());
+            
+            allTopicsData.forEach(topic => {
+                const option = document.createElement('option');
+                option.value = topic.id;
+                option.textContent = `${topic.title} (${topic.questions.length} questions)`;
+                topicFilter.appendChild(option);
+            });
+        }
+        
+        // Render questions
+        renderQuestions();
+        
+        // Initialize selected count
+        updateSelectedCount();
+        
+        // Add event listeners to all checkboxes for count updates
+        document.querySelectorAll('#questions-list input[type="checkbox"]').forEach(cb => {
+            cb.addEventListener('change', updateSelectedCount);
+        });
+    } catch (error) {
+        console.error('Error loading questions:', error);
+        document.getElementById('questions-list').innerHTML = '<p style="color: var(--danger-color);">Error loading questions. Please refresh the page.</p>';
+    }
+}
+
+function toggleTopic(topicKey) {
+    const topicDiv = document.getElementById(topicKey);
+    const icon = document.getElementById(`icon-${topicKey}`);
+    
+    if (topicDiv.style.display === 'none') {
+        topicDiv.style.display = 'block';
+        icon.textContent = '▼';
+    } else {
+        topicDiv.style.display = 'none';
+        icon.textContent = '▶';
+    }
+}
+
+function expandAllTopics() {
+    if (!window.topicsData) return;
+    window.topicsData.forEach(topic => {
+        const topicKey = `topic-${topic.id}`;
+        const topicDiv = document.getElementById(topicKey);
+        const icon = document.getElementById(`icon-${topicKey}`);
+        if (topicDiv) {
+            topicDiv.style.display = 'block';
+            icon.textContent = '▼';
+        }
+    });
+}
+
+function collapseAllTopics() {
+    if (!window.topicsData) return;
+    window.topicsData.forEach(topic => {
+        const topicKey = `topic-${topic.id}`;
+        const topicDiv = document.getElementById(topicKey);
+        const icon = document.getElementById(`icon-${topicKey}`);
+        if (topicDiv) {
+            topicDiv.style.display = 'none';
+            icon.textContent = '▶';
+        }
+    });
+}
+
+function selectAllInTopic(topicKey) {
+    const topicDiv = document.getElementById(topicKey);
+    const checkboxes = topicDiv.querySelectorAll('input[type="checkbox"]');
+    const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+    
+    checkboxes.forEach(cb => {
+        cb.checked = !allChecked;
+    });
+    updateSelectedCount();
+}
+
+function renderQuestions() {
+    if (!allTopicsData || allTopicsData.length === 0) {
+        const questionsList = document.getElementById('questions-list');
+        if (questionsList) {
+            questionsList.innerHTML = '<p style="text-align: center; color: var(--text-secondary); padding: 2rem;">No questions available. Generate questions from sources first!</p>';
+        }
+        return;
+    }
+    
+    const searchTerm = (document.getElementById('question-search')?.value || '').toLowerCase();
+    const selectedTopicId = document.getElementById('topic-filter')?.value || '';
+    
+    // Filter topics
+    let filteredTopics = allTopicsData;
+    
+    if (selectedTopicId) {
+        filteredTopics = filteredTopics.filter(topic => topic.id.toString() === selectedTopicId);
+    }
+    
+    // Filter questions within topics by search term
+    if (searchTerm) {
+        filteredTopics = filteredTopics.map(topic => ({
+            ...topic,
+            questions: topic.questions.filter(q => 
+                q.question_text.toLowerCase().includes(searchTerm)
+            )
+        })).filter(topic => topic.questions.length > 0);
+    }
+    
+    // Build HTML with collapsible topic sections
+    const questionsList = document.getElementById('questions-list');
+    let html = '';
+    let totalQuestions = 0;
+    let visibleQuestions = 0;
+    
+    for (const topicData of filteredTopics) {
+        const topicKey = `topic-${topicData.id}`;
+        visibleQuestions += topicData.questions.length;
+        totalQuestions += allTopicsData.find(t => t.id === topicData.id)?.questions.length || 0;
+        
+        html += `
+            <div class="topic-group" data-topic-id="${topicData.id}">
+                <div class="topic-header" onclick="toggleTopic('${topicKey}')">
+                    <div class="topic-header-content">
+                        <span class="topic-toggle-icon" id="icon-${topicKey}">▼</span>
+                        <div class="topic-info">
+                            <h4>${topicData.title}</h4>
+                            <small>
+                                ${topicData.source_type === 'url' ? '🔗' : topicData.source_type === 'pdf' ? '📄' : topicData.source_type === 'word' ? '📝' : '🖼️'} 
+                                ${topicData.source_type === 'url' && topicData.source_url ? 
+                                    `<a href="${topicData.source_url}" target="_blank" rel="noopener noreferrer" title="${topicData.source_url}" style="color: var(--primary); text-decoration: underline;">${topicData.source_url.length > 60 ? topicData.source_url.substring(0, 60) + '...' : topicData.source_url}</a>` : 
+                                    topicData.source_display_name} 
+                                • ${topicData.questions.length} question${topicData.questions.length !== 1 ? 's' : ''}
+                            </small>
+                        </div>
+                    </div>
+                    <button type="button" onclick="event.stopPropagation(); selectAllInTopic('${topicKey}')" class="btn btn-secondary btn-small">Select All</button>
+                </div>
+                <div class="topic-questions" id="${topicKey}">
+                    ${topicData.description ? `<p style="padding: 0.5rem 1rem; color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 0.5rem;">${topicData.description}</p>` : ''}
+                    ${topicData.questions.map((q, idx) => `
+                        <div class="question-checkbox">
+                            <input type="checkbox" id="q-${q.id}" value="${q.id}" class="topic-${topicData.id}-question" onchange="updateSelectedCount()">
+                            <label for="q-${q.id}">
+                                <strong>Q${idx + 1}:</strong> ${q.question_text}
+                                <small>(${q.answers.length} answers)</small>
+                            </label>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }
+    
+    if (html === '') {
+        html = '<p style="text-align: center; color: var(--text-secondary); padding: 2rem;">No questions match your search criteria.</p>';
+    }
+    
+    questionsList.innerHTML = html;
+    
+    // Update counts
+    const totalCountEl = document.getElementById('total-count');
+    const visibleCountEl = document.getElementById('visible-count');
+    if (totalCountEl) {
+        totalCountEl.textContent = allTopicsData.reduce((sum, t) => sum + (t.questions?.length || 0), 0);
+    }
+    if (visibleCountEl) {
+        visibleCountEl.textContent = visibleQuestions;
+    }
+    
+    // Re-attach event listeners
+    document.querySelectorAll('#questions-list input[type="checkbox"]').forEach(cb => {
+        cb.addEventListener('change', updateSelectedCount);
+    });
+}
+
+function filterQuestions() {
+    renderQuestions();
+    updateSelectedCount();
+}
+
+function updateSelectedCount() {
+    const allCheckboxes = document.querySelectorAll('#questions-list input[type="checkbox"]:not([style*="display: none"])');
+    const selectedCount = Array.from(allCheckboxes).filter(cb => cb.checked).length;
+    const countElement = document.getElementById('selected-number');
+    if (countElement) {
+        countElement.textContent = selectedCount;
+    }
+}
+
+// Create quiz form
+document.getElementById('create-quiz-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const selectedQuestions = Array.from(document.querySelectorAll('#questions-list input[type="checkbox"]:checked'))
+        .map(cb => parseInt(cb.value));
+    
+    if (selectedQuestions.length === 0) {
+        alert('Please select at least one question to create a quiz.');
+        return;
+    }
+    
+    // Show loading state
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Creating Quiz...';
+    
+    const quizData = {
+        title: document.getElementById('quiz-title').value,
+        description: document.getElementById('quiz-description').value,
+        question_ids: selectedQuestions
+    };
+    
+    try {
+        const response = await fetch(`${API_BASE}/quizzes`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(quizData)
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            alert(`Quiz "${data.data.title}" created successfully with ${selectedQuestions.length} question(s)!`);
+            this.reset();
+            // Switch to list tab and reload
+            switchTab('list');
+            loadQuizzes();
+            loadAllQuestions();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    } catch (error) {
+        alert('Error creating quiz: ' + error.message);
+    } finally {
+        // Restore button state
+        const submitBtn = document.querySelector('#create-quiz-form button[type="submit"]');
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Create Quiz';
+        }
+    }
+});
+
+// Load quizzes
+async function loadQuizzes() {
+    try {
+        const response = await fetch(`${API_BASE}/quizzes`);
+        const data = await response.json();
+        
+        if (data.success) {
+            const quizzesList = document.getElementById('quizzes-list');
+            if (data.data.length === 0) {
+                quizzesList.innerHTML = '<p>No quizzes yet. Create one above!</p>';
+                return;
+            }
+            
+            quizzesList.innerHTML = data.data.map(quiz => `
+                <div class="quiz-item">
+                    <h3>${quiz.title}</h3>
+                    <p>${quiz.description || 'No description'}</p>
+                    <p><strong>Questions:</strong> ${quiz.question_ids.length}</p>
+                    <div class="quiz-actions">
+                        <a href="/quizzes/${quiz.id}/take" class="btn btn-primary">Take Quiz</a>
+                        <button onclick="viewAttempts(${quiz.id})" class="btn btn-secondary">View Attempts</button>
+                        <button onclick="deleteQuiz(${quiz.id})" class="btn btn-danger">Delete</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+    } catch (error) {
+        document.getElementById('quizzes-list').innerHTML = '<p>Error loading quizzes</p>';
+    }
+}
+
+async function viewAttempts(quizId) {
+    try {
+        const response = await fetch(`${API_BASE}/quizzes/${quizId}/attempts`);
+        const data = await response.json();
+        
+        if (data.success) {
+            if (data.data.length === 0) {
+                alert('No attempts yet for this quiz.');
+                return;
+            }
+            
+            // Create a modal or better display for attempts
+            const attempts = data.data;
+            const maxScore = attempts[0]?.quiz?.question_ids?.length || attempts[0]?.quiz?.question_ids?.length || '?';
+            const percentage = attempts[0]?.quiz ? ((attempts[0].total_score / maxScore) * 100).toFixed(1) : '?';
+            
+            let attemptsHtml = `<div style="max-width: 500px; max-height: 400px; overflow-y: auto;">`;
+            attemptsHtml += `<h3 style="margin-bottom: 1rem;">Quiz Attempts (${attempts.length})</h3>`;
+            
+            attempts.forEach((attempt, idx) => {
+                const attemptMaxScore = attempt.quiz?.question_ids?.length || maxScore;
+                const attemptPercentage = attempt.quiz ? ((attempt.total_score / attemptMaxScore) * 100).toFixed(1) : '?';
+                attemptsHtml += `
+                    <div style="padding: 1rem; margin-bottom: 0.5rem; background: var(--bg-secondary); border-radius: 8px; border-left: 3px solid var(--primary);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                            <strong>Attempt #${attempts.length - idx}</strong>
+                            <span style="color: var(--primary); font-weight: 600;">${attempt.total_score.toFixed(2)} / ${attemptMaxScore} (${attemptPercentage}%)</span>
+                        </div>
+                        <small style="color: var(--text-secondary); display: block; margin-bottom: 0.5rem;">
+                            ${new Date(attempt.completed_at).toLocaleString()}
+                        </small>
+                        <a href="/quiz-attempts/${attempt.id}" style="color: var(--primary); text-decoration: underline;">View Details →</a>
+                    </div>
+                `;
+            });
+            
+            attemptsHtml += `</div>`;
+            
+            // Create a modal
+            const modal = document.createElement('div');
+            modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center;';
+            modal.innerHTML = `
+                <div style="background: white; padding: 2rem; border-radius: 12px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
+                    ${attemptsHtml}
+                    <div style="text-align: center; margin-top: 1.5rem;">
+                        <button onclick="this.closest('[style*=\"position: fixed\"]').remove()" class="btn btn-primary">Close</button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // Close on background click
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    modal.remove();
+                }
+            });
+        }
+    } catch (error) {
+        alert('Error loading attempts: ' + error.message);
+    }
+}
+
+async function deleteQuiz(quizId) {
+    if (!confirm('Are you sure you want to delete this quiz?')) return;
+    
+    try {
+        const response = await fetch(`${API_BASE}/quizzes/${quizId}`, {
+            method: 'DELETE'
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            loadQuizzes();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    } catch (error) {
+        alert('Error deleting quiz: ' + error.message);
+    }
+}
+
+// Tab switching
+function switchTab(tabName) {
+    // Hide all tab contents
+    document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.remove('active');
+    });
+    
+    // Remove active class from all buttons
+    document.querySelectorAll('.tab-button').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Show selected tab
+    const tabContent = document.getElementById(`tab-content-${tabName}`);
+    const tabButton = document.getElementById(`tab-${tabName}`);
+    
+    if (tabContent) {
+        tabContent.classList.add('active');
+    } else {
+        console.error(`Tab content not found: tab-content-${tabName}`);
+    }
+    
+    if (tabButton) {
+        tabButton.classList.add('active');
+    } else {
+        console.error(`Tab button not found: tab-${tabName}`);
+    }
+    
+    // Load data if needed
+    if (tabName === 'list') {
+        loadQuizzes();
+    } else if (tabName === 'create') {
+        // Ensure questions are loaded for create tab
+        if (allTopicsData.length === 0) {
+            loadAllQuestions();
+        }
+    }
+}
+
+// Make switchTab available globally
+window.switchTab = switchTab;
+
+// Load on page load
+loadQuizzes();
+loadAllQuestions();
+</script>
+{% endblock %}
+
