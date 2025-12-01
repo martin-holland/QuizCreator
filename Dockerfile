@@ -18,15 +18,23 @@ RUN apt-get update && apt-get install -y \
     libxrandr2 \
     libgbm1 \
     libasound2 \
+    fonts-unifont \
+    fonts-liberation \
+    fonts-noto-color-emoji \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install Playwright browsers (system dependencies already installed above)
+# Install Playwright browsers
 RUN playwright install chromium
-RUN playwright install-deps chromium
+
+# Note: We skip 'playwright install-deps' because:
+# 1. We've already installed the critical Chromium dependencies manually above
+# 2. Some font packages (ttf-ubuntu-font-family, ttf-unifont) are not available
+#    in all Debian versions, but we've installed fonts-unifont as a replacement
+# 3. Playwright will work fine with the browser and manually installed dependencies
 
 # Copy application code
 COPY . .
