@@ -114,8 +114,15 @@ def diagnostics():
             diagnostics_info['dependencies']['playwright']['browser'] = '✅ Chromium installed and working'
             diagnostics_info['dependencies']['playwright']['status'] = '✅ Fully operational'
         except Exception as browser_error:
-            diagnostics_info['dependencies']['playwright']['browser'] = f'❌ Error: {str(browser_error)[:200]}'
+            error_msg = str(browser_error)
+            # Extract more useful error information
+            if 'missing dependencies' in error_msg.lower():
+                diagnostics_info['dependencies']['playwright']['browser'] = f'❌ Missing system dependencies: {error_msg[:300]}'
+                diagnostics_info['dependencies']['playwright']['suggestion'] = 'Run: playwright install-deps chromium'
+            else:
+                diagnostics_info['dependencies']['playwright']['browser'] = f'❌ Error: {error_msg[:300]}'
             diagnostics_info['dependencies']['playwright']['status'] = '❌ Browser not working'
+            diagnostics_info['dependencies']['playwright']['full_error'] = error_msg[:500]  # Include more context
     except ImportError:
         diagnostics_info['dependencies']['playwright'] = {
             'python_package': '❌ Not installed',

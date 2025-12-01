@@ -37,13 +37,22 @@ RUN pip install --no-cache-dir -r requirements.txt
 RUN playwright install chromium
 
 # Install Playwright system dependencies
-# This installs all required Chromium dependencies for the current Debian version
-# We allow it to continue even if some optional packages fail
-RUN set +e && playwright install-deps chromium; exit_code=$?; \
-    if [ $exit_code -ne 0 ]; then \
-    echo "Warning: Some Playwright dependencies may have failed, but continuing..."; \
-    fi; \
-    set -e
+# Try playwright install-deps first (it knows what's needed for the current OS)
+# If it fails, install common Chromium dependencies manually
+RUN apt-get update && \
+    (playwright install-deps chromium 2>&1 || \
+    (echo "playwright install-deps failed, installing dependencies manually..." && \
+    apt-get install -y \
+    libxshmfence1 \
+    libxss1 \
+    libxi6 \
+    libxtst6 \
+    libpangocairo-1.0-0 \
+    libatk1.0-0 \
+    libcairo-gobject2 \
+    libgtk-3-0 \
+    || true)) && \
+    rm -rf /var/lib/apt/lists/*
 
 # Copy application code
 COPY . .
