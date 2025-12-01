@@ -4,13 +4,20 @@ WORKDIR /app
 
 # Install system dependencies
 # Tesseract OCR for image text extraction
-# Chromium dependencies for Playwright
+# Chromium dependencies for Playwright (comprehensive list)
 RUN apt-get update && apt-get install -y \
+    # Tesseract OCR
     tesseract-ocr \
     tesseract-ocr-eng \
+    # Chromium/Playwright core dependencies
     libnss3 \
+    libnspr4 \
+    libatk1.0-0 \
     libatk-bridge2.0-0 \
+    libatspi2.0-0 \
+    libcups2 \
     libdrm2 \
+    libdbus-1-3 \
     libxkbcommon0 \
     libxcomposite1 \
     libxdamage1 \
@@ -18,9 +25,40 @@ RUN apt-get update && apt-get install -y \
     libxrandr2 \
     libgbm1 \
     libasound2 \
+    libpango-1.0-0 \
+    libcairo2 \
+    libgtk-3-0 \
+    libgdk-pixbuf2.0-0 \
+    libpangocairo-1.0-0 \
+    # Additional X11 and system libraries
+    libx11-6 \
+    libx11-xcb1 \
+    libxcb1 \
+    libxcursor1 \
+    libxext6 \
+    libxi6 \
+    libxrender1 \
+    libxss1 \
+    libxtst6 \
+    # System libraries
+    libc6 \
+    libcairo2 \
+    libexpat1 \
+    libfontconfig1 \
+    libgcc1 \
+    libglib2.0-0 \
+    libstdc++6 \
+    # Utilities
+    ca-certificates \
+    libappindicator3-1 \
+    lsb-release \
+    wget \
+    xdg-utils \
+    # Fonts
     fonts-unifont \
     fonts-liberation \
     fonts-noto-color-emoji \
+    fonts-dejavu-core \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
@@ -30,11 +68,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Install Playwright browsers
 RUN playwright install chromium
 
-# Note: We skip 'playwright install-deps' because:
-# 1. We've already installed the critical Chromium dependencies manually above
-# 2. Some font packages (ttf-ubuntu-font-family, ttf-unifont) are not available
-#    in all Debian versions, but we've installed fonts-unifont as a replacement
-# 3. Playwright will work fine with the browser and manually installed dependencies
+# Install Playwright system dependencies
+# This ensures all required libraries are present for Chromium to run
+RUN playwright install-deps chromium || true
+# Note: We use || true because some optional packages might fail, but critical ones should install
 
 # Copy application code
 COPY . .

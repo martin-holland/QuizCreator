@@ -146,17 +146,17 @@ def diagnostics():
             'purpose': 'Fallback URL content extraction'
         }
     
-    # Check other dependencies
+    # Check other dependencies (using correct import names)
     dependencies_to_check = {
-        'beautifulsoup4': 'HTML parsing',
-        'PyPDF2': 'PDF extraction',
-        'python-docx': 'Word document extraction',
-        'Pillow': 'Image processing'
+        'beautifulsoup4': ('bs4', 'HTML parsing'),
+        'PyPDF2': ('PyPDF2', 'PDF extraction'),
+        'python-docx': ('docx', 'Word document extraction'),
+        'Pillow': ('PIL', 'Image processing')
     }
     
-    for dep_name, purpose in dependencies_to_check.items():
+    for dep_name, (import_name, purpose) in dependencies_to_check.items():
         try:
-            __import__(dep_name.lower().replace('-', '_'))
+            __import__(import_name)
             diagnostics_info['dependencies'][dep_name] = {
                 'installed': True,
                 'status': '✅ Installed',
