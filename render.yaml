@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: quiz-app
+    env: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: free
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+      - key: OPENAI_API_KEY
+        sync: false  # Set this manually in Render dashboard
+    healthCheckPath: /
+

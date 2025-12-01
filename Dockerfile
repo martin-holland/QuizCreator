@@ -42,11 +42,14 @@ COPY . .
 # Create upload directory (using temp directory for compatibility)
 RUN mkdir -p /tmp/quiz_app_uploads
 
-# Expose port 5000 (Railway will handle external port mapping)
+# Expose port (Render sets PORT env var automatically)
 EXPOSE 5000
 
-# Run gunicorn with HARDCODED port 5000
-# Railway automatically maps container port to external port
-# No environment variables needed - simpler and more reliable
-CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:5000", "--workers", "2", "--timeout", "120", "--access-logfile", "-", "--error-logfile", "-"]
+# Copy and make startup script executable
+COPY start.sh /app/start.sh
+RUN chmod +x /app/start.sh
+
+# Use startup script to handle PORT (Render sets $PORT automatically)
+# Render handles $PORT correctly with shell expansion
+CMD ["/bin/bash", "/app/start.sh"]
 
