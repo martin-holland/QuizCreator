@@ -12,20 +12,19 @@ echo "DATABASE_URL: ${DATABASE_URL:+SET (hidden)}"
 echo "OPENAI_API_KEY: ${OPENAI_API_KEY:+SET (hidden)}"
 echo "===================================="
 
-# Get port from environment variable, default to 5000
-PORT=${PORT:-5000}
-
-# Validate port is a number
-if ! [[ "$PORT" =~ ^[0-9]+$ ]]; then
-    echo "ERROR: PORT must be a number, got: '$PORT'"
-    echo "Setting PORT to default: 5000"
-    PORT=5000
-fi
-
-# Validate port is in valid range
-if [ "$PORT" -lt 1 ] || [ "$PORT" -gt 65535 ]; then
-    echo "ERROR: PORT must be between 1 and 65535, got: $PORT"
-    echo "Setting PORT to default: 5000"
+# Get port from environment variable
+# Railway automatically sets PORT, but we default to 5000 for safety
+# Railway will handle port mapping automatically
+if [ -n "$PORT" ] && [[ "$PORT" =~ ^[0-9]+$ ]] && [ "$PORT" -ge 1 ] && [ "$PORT" -le 65535 ]; then
+    # PORT is set and valid, use it
+    PORT=$PORT
+else
+    # PORT is not set or invalid, use static 5000
+    if [ -n "$PORT" ]; then
+        echo "WARNING: PORT is invalid ('$PORT'), using default: 5000"
+    else
+        echo "INFO: PORT not set, using default: 5000"
+    fi
     PORT=5000
 fi
 
