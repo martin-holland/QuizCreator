@@ -86,9 +86,10 @@ def diagnostics():
             try:
                 import pytesseract
                 version = pytesseract.get_tesseract_version()
-                diagnostics_info['dependencies']['tesseract']['version'] = version
-            except:
-                pass
+                # Convert version object to string for JSON serialization
+                diagnostics_info['dependencies']['tesseract']['version'] = str(version)
+            except Exception as e:
+                diagnostics_info['dependencies']['tesseract']['version_error'] = str(e)
     except Exception as e:
         diagnostics_info['dependencies']['tesseract'] = {
             'installed': False,
