@@ -1,7 +1,9 @@
 """
 Main routes for Quiz Application UI
 """
-from flask import Blueprint, render_template
+from flask import Blueprint, render_template, jsonify
+from datetime import datetime
+from app.database import db
 
 main_bp = Blueprint('main', __name__)
 
@@ -29,3 +31,36 @@ def take_quiz_page(quiz_id):
 def quiz_results_page(attempt_id):
     """Quiz results page"""
     return render_template('quiz_results.html', attempt_id=attempt_id, title='Quiz Results')
+
+@main_bp.route('/health')
+def health_check():
+    """Health check endpoint - verifies database connection"""
+    try:
+        from sqlalchemy import text
+        # Try to execute a simple database query
+        db.session.execute(text('SELECT 1'))
+        db.session.commit()
+        
+        # Get database URI info (without exposing password)
+        db_uri = db.engine.url
+        db_info = {
+            'dialect': db_uri.drivername,
+            'database': db_uri.database,
+            'host': db_uri.host,
+            'port': db_uri.port,
+            'username': db_uri.username
+        }
+        
+        return jsonify({
+            'status': 'healthy',
+            'database': 'connected',
+            'database_info': db_info,
+            'timestamp': datetime.utcnow().isoformat()
+        }), 200
+    except Exception as e:
+        return jsonify({
+            'status': 'unhealthy',
+            'database': 'disconnected',
+            'error': str(e),
+            'timestamp': datetime.utcnow().isoformat()
+        }), 500

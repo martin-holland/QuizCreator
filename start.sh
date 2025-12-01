@@ -10,8 +10,8 @@ PORT=${PORT:-5000}
 
 echo "Starting gunicorn on port: $PORT"
 
-# Start gunicorn
-exec gunicorn app:app \
+# Start gunicorn using wsgi.py (explicit entry point)
+exec gunicorn wsgi:app \
     --bind "0.0.0.0:${PORT}" \
     --workers 2 \
     --timeout 120 \
