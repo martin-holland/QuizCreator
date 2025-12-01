@@ -42,9 +42,14 @@ COPY . .
 # Create upload directory (using temp directory for compatibility)
 RUN mkdir -p /tmp/quiz_app_uploads
 
-# Expose port
+# Expose port (default, Railway will use PORT env var)
 EXPOSE 5000
 
-# Run with gunicorn
-CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:5000", "--workers", "2"]
+# Copy startup script
+COPY start.sh /app/start.sh
+RUN chmod +x /app/start.sh
+
+# Run with startup script (handles PORT environment variable)
+# Use shell form to ensure environment variables are expanded
+CMD ["/bin/bash", "/app/start.sh"]
 
