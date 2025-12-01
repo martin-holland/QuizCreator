@@ -64,3 +64,117 @@ def health_check():
             'error': str(e),
             'timestamp': datetime.utcnow().isoformat()
         }), 500
+
+@main_bp.route('/diagnostics')
+def diagnostics():
+    """Diagnostic endpoint - checks all system dependencies"""
+    diagnostics_info = {
+        'timestamp': datetime.utcnow().isoformat(),
+        'dependencies': {}
+    }
+    
+    # Check Tesseract OCR
+    try:
+        from app.extractors import ImageExtractor
+        tesseract_installed = ImageExtractor._check_tesseract_installed()
+        diagnostics_info['dependencies']['tesseract'] = {
+            'installed': tesseract_installed,
+            'status': '✅ Installed' if tesseract_installed else '❌ Not installed',
+            'purpose': 'Image text extraction (OCR)'
+        }
+        if tesseract_installed:
+            try:
+                import pytesseract
+                version = pytesseract.get_tesseract_version()
+                diagnostics_info['dependencies']['tesseract']['version'] = version
+            except:
+                pass
+    except Exception as e:
+        diagnostics_info['dependencies']['tesseract'] = {
+            'installed': False,
+            'status': f'❌ Error checking: {str(e)}',
+            'purpose': 'Image text extraction (OCR)'
+        }
+    
+    # Check Playwright
+    try:
+        from playwright.sync_api import sync_playwright
+        diagnostics_info['dependencies']['playwright'] = {
+            'python_package': '✅ Installed',
+            'status': 'Checking browser...',
+            'purpose': 'JavaScript-rendered URL extraction'
+        }
+        
+        # Try to launch browser (this checks if Chromium is installed)
+        try:
+            with sync_playwright() as p:
+                browser = p.chromium.launch(headless=True, timeout=10000)
+                browser.close()
+            diagnostics_info['dependencies']['playwright']['browser'] = '✅ Chromium installed and working'
+            diagnostics_info['dependencies']['playwright']['status'] = '✅ Fully operational'
+        except Exception as browser_error:
+            diagnostics_info['dependencies']['playwright']['browser'] = f'❌ Error: {str(browser_error)[:200]}'
+            diagnostics_info['dependencies']['playwright']['status'] = '❌ Browser not working'
+    except ImportError:
+        diagnostics_info['dependencies']['playwright'] = {
+            'python_package': '❌ Not installed',
+            'browser': '❌ Cannot check (package missing)',
+            'status': '❌ Not installed',
+            'purpose': 'JavaScript-rendered URL extraction'
+        }
+    except Exception as e:
+        diagnostics_info['dependencies']['playwright'] = {
+            'python_package': '✅ Installed',
+            'browser': f'❌ Error: {str(e)[:200]}',
+            'status': '❌ Error checking',
+            'purpose': 'JavaScript-rendered URL extraction'
+        }
+    
+    # Check Trafilatura
+    try:
+        import trafilatura
+        diagnostics_info['dependencies']['trafilatura'] = {
+            'installed': True,
+            'status': '✅ Installed',
+            'purpose': 'Fallback URL content extraction'
+        }
+    except ImportError:
+        diagnostics_info['dependencies']['trafilatura'] = {
+            'installed': False,
+            'status': '❌ Not installed',
+            'purpose': 'Fallback URL content extraction'
+        }
+    
+    # Check other dependencies
+    dependencies_to_check = {
+        'beautifulsoup4': 'HTML parsing',
+        'PyPDF2': 'PDF extraction',
+        'python-docx': 'Word document extraction',
+        'Pillow': 'Image processing'
+    }
+    
+    for dep_name, purpose in dependencies_to_check.items():
+        try:
+            __import__(dep_name.lower().replace('-', '_'))
+            diagnostics_info['dependencies'][dep_name] = {
+                'installed': True,
+                'status': '✅ Installed',
+                'purpose': purpose
+            }
+        except ImportError:
+            diagnostics_info['dependencies'][dep_name] = {
+                'installed': False,
+                'status': '❌ Not installed',
+                'purpose': purpose
+            }
+    
+    # Overall status
+    critical_deps = ['playwright', 'tesseract']
+    all_critical_ok = all(
+        diagnostics_info['dependencies'].get(dep, {}).get('status', '').startswith('✅')
+        for dep in critical_deps
+    )
+    
+    diagnostics_info['overall_status'] = '✅ All critical dependencies OK' if all_critical_ok else '⚠️ Some dependencies missing'
+    
+    return jsonify(diagnostics_info), 200
