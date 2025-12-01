@@ -25,8 +25,9 @@ class Config:
     # Database Configuration
     # Uses DATABASE_URL if provided (PostgreSQL/MySQL), otherwise SQLite for local development
     # For local: Leave DATABASE_URL empty in .env to use SQLite (no setup needed)
-    # For production: Set DATABASE_URL environment variable (e.g., from Railway/Render)
+    # For production: Railway/Render automatically provides DATABASE_URL when PostgreSQL is connected
     # Example PostgreSQL URL: postgresql://user:password@localhost:5432/dbname
+    # Note: URL normalization (postgres:// -> postgresql://) is handled in app/__init__.py
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'sqlite:///quiz_app.db'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     

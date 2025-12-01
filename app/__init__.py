@@ -33,6 +33,19 @@ def create_app(config_name='default'):
     # Load configuration - similar to React's environment variables
     app.config.from_object(config[config_name])
     
+    # Normalize database URL if needed (some platforms provide postgres:// but SQLAlchemy needs postgresql://)
+    # Read fresh from environment to handle cases where DATABASE_URL is set after config class definition
+    database_url = os.environ.get('DATABASE_URL') or app.config.get('SQLALCHEMY_DATABASE_URI')
+    if database_url:
+        if database_url.startswith('postgres://'):
+            # SQLAlchemy requires postgresql://, not postgres://
+            # Some platforms (like Heroku) provide postgres://, so we normalize it
+            database_url = database_url.replace('postgres://', 'postgresql://', 1)
+        app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+    else:
+        # Fallback to SQLite if no DATABASE_URL is set
+        app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///quiz_app.db'
+    
     # Initialize database (SQLite - built into Python!)
     db.init_app(app)
     
