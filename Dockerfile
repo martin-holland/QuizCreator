@@ -4,20 +4,15 @@ WORKDIR /app
 
 # Install system dependencies
 # Tesseract OCR for image text extraction
-# Chromium dependencies for Playwright (comprehensive list)
+# Basic Chromium dependencies (playwright install-deps will handle the rest)
 RUN apt-get update && apt-get install -y \
     # Tesseract OCR
     tesseract-ocr \
     tesseract-ocr-eng \
-    # Chromium/Playwright core dependencies
+    # Basic Chromium/Playwright dependencies (minimal set)
     libnss3 \
-    libnspr4 \
-    libatk1.0-0 \
     libatk-bridge2.0-0 \
-    libatspi2.0-0 \
-    libcups2 \
     libdrm2 \
-    libdbus-1-3 \
     libxkbcommon0 \
     libxcomposite1 \
     libxdamage1 \
@@ -25,40 +20,13 @@ RUN apt-get update && apt-get install -y \
     libxrandr2 \
     libgbm1 \
     libasound2 \
-    libpango-1.0-0 \
-    libcairo2 \
-    libgtk-3-0 \
-    libgdk-pixbuf2.0-0 \
-    libpangocairo-1.0-0 \
-    # Additional X11 and system libraries
-    libx11-6 \
-    libx11-xcb1 \
-    libxcb1 \
-    libxcursor1 \
-    libxext6 \
-    libxi6 \
-    libxrender1 \
-    libxss1 \
-    libxtst6 \
-    # System libraries
-    libc6 \
-    libcairo2 \
-    libexpat1 \
-    libfontconfig1 \
-    libgcc1 \
-    libglib2.0-0 \
-    libstdc++6 \
-    # Utilities
-    ca-certificates \
-    libappindicator3-1 \
-    lsb-release \
-    wget \
-    xdg-utils \
     # Fonts
     fonts-unifont \
     fonts-liberation \
     fonts-noto-color-emoji \
-    fonts-dejavu-core \
+    # Utilities
+    wget \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
@@ -69,9 +37,13 @@ RUN pip install --no-cache-dir -r requirements.txt
 RUN playwright install chromium
 
 # Install Playwright system dependencies
-# This ensures all required libraries are present for Chromium to run
-RUN playwright install-deps chromium || true
-# Note: We use || true because some optional packages might fail, but critical ones should install
+# This installs all required Chromium dependencies for the current Debian version
+# We allow it to continue even if some optional packages fail
+RUN set +e && playwright install-deps chromium; exit_code=$?; \
+    if [ $exit_code -ne 0 ]; then \
+    echo "Warning: Some Playwright dependencies may have failed, but continuing..."; \
+    fi; \
+    set -e
 
 # Copy application code
 COPY . .
