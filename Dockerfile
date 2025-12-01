@@ -42,16 +42,11 @@ COPY . .
 # Create upload directory (using temp directory for compatibility)
 RUN mkdir -p /tmp/quiz_app_uploads
 
-# Expose port (Railway will handle port mapping automatically)
-# Using a default port for EXPOSE, but actual port comes from PORT env var at runtime
+# Expose port 5000 (Railway will handle external port mapping)
 EXPOSE 5000
 
-# Copy and make startup script executable
-COPY start.sh /app/start.sh
-RUN chmod +x /app/start.sh
-
-# Use startup script to handle PORT environment variable
-# This uses shell expansion (Solution 1 from Railway forum)
-# The script will use $PORT if set by Railway, otherwise defaults to 5000
-CMD ["/app/start.sh"]
+# Run gunicorn with HARDCODED port 5000
+# Railway automatically maps container port to external port
+# No environment variables needed - simpler and more reliable
+CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:5000", "--workers", "2", "--timeout", "120", "--access-logfile", "-", "--error-logfile", "-"]
 
