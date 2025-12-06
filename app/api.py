@@ -5,6 +5,7 @@ from flask import Blueprint, request, jsonify, send_from_directory
 from werkzeug.utils import secure_filename
 import os
 import re
+import time
 from app.models import (
     create_source, get_all_sources, get_source_by_id, delete_source,
     create_topic, get_topics_by_source, get_topic_by_id, update_topic,
@@ -315,6 +316,11 @@ def generate_topic_and_questions(source_id):
         # Check for existing topics with the same base title and add iteration number
         existing_topics = get_topics_by_source(source_id)
         topic_title = _get_unique_topic_title(topic_title, existing_topics)
+        
+        # Add delay between API calls to avoid hitting rate limits
+        # This helps stay within OpenAI's tokens-per-minute limits
+        # Increased to 3 seconds to accommodate smarter content selection (more tokens but better quality)
+        time.sleep(3)  # 3 second delay between topic and question generation
         
         # Generate questions using OpenAI with the extracted/stored content
         questions_data = openai_service.generate_questions(
