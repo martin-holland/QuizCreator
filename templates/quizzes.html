@@ -17,54 +17,76 @@
     
     <!-- Create Quiz Tab -->
     <div id="tab-content-create" class="tab-content active">
-        <div class="card">
-            <div class="card-header">
-                <h2 class="card-title">Create New Quiz</h2>
-            </div>
-        <form id="create-quiz-form">
-            <div class="form-group">
-                <label>Quiz Title:</label>
-                <input type="text" id="quiz-title" required>
-            </div>
-            <div class="form-group">
-                <label>Description:</label>
-                <textarea id="quiz-description"></textarea>
-            </div>
-            <div class="form-group">
-                <label>Select Questions:</label>
-                <div style="margin-bottom: 1rem; display: flex; flex-direction: column; gap: 1rem;">
-                    <!-- Search and Filter Controls -->
-                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
-                        <input 
-                            type="text" 
-                            id="question-search" 
-                            placeholder="Search questions..." 
-                            style="flex: 1; min-width: 200px; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: var(--radius-md);"
-                            oninput="filterQuestions()"
-                        >
-                        <select 
-                            id="topic-filter" 
-                            style="padding: 0.5rem; border: 1px solid var(--border-color); border-radius: var(--radius-md); min-width: 150px;"
-                            onchange="filterQuestions()"
-                        >
-                            <option value="">All Topics</option>
-                        </select>
-                        <button type="button" onclick="expandAllTopics()" class="btn btn-secondary btn-small">Expand All</button>
-                        <button type="button" onclick="collapseAllTopics()" class="btn btn-secondary btn-small">Collapse All</button>
+        <div class="quiz-create-container">
+            <!-- Quiz Form Section -->
+            <div class="card quiz-form-card">
+                <div class="card-header">
+                    <h2 class="card-title">Create New Quiz</h2>
+                </div>
+                <form id="create-quiz-form">
+                    <div class="form-group">
+                        <label class="form-label">Quiz Title</label>
+                        <input type="text" id="quiz-title" class="form-input" required>
                     </div>
-                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
-                        <div id="filter-info" style="color: var(--text-secondary); font-size: 0.875rem;">
-                            Showing <span id="visible-count">0</span> of <span id="total-count">0</span> questions
+                    <div class="form-group">
+                        <label class="form-label">Description</label>
+                        <textarea id="quiz-description" class="form-input" rows="2"></textarea>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Question Selection Section -->
+            <div class="card questions-selection-card">
+                <div class="questions-selection-header">
+                    <h3 class="questions-selection-title">Select Questions</h3>
+                    <div class="selection-stats">
+                        <span class="stat-item">
+                            <span id="selected-number" class="stat-value">0</span>
+                            <span class="stat-label">selected</span>
+                        </span>
+                        <span class="stat-divider">•</span>
+                        <span class="stat-item">
+                            <span id="visible-count" class="stat-value">0</span>
+                            <span class="stat-label">of <span id="total-count">0</span> shown</span>
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Sticky Controls Bar -->
+                <div class="questions-controls-bar">
+                    <div class="controls-row">
+                        <div class="search-filter-group">
+                            <input 
+                                type="text" 
+                                id="question-search" 
+                                placeholder="Search questions..." 
+                                class="question-search-input"
+                                oninput="filterQuestions()"
+                            >
+                            <select 
+                                id="topic-filter" 
+                                class="topic-filter-select"
+                                onchange="filterQuestions()"
+                            >
+                                <option value="">All Topics</option>
+                            </select>
                         </div>
-                        <div id="selected-count" style="color: var(--text-secondary); font-weight: 500;">
-                            <span id="selected-number">0</span> question(s) selected
+                        <div class="bulk-actions-group">
+                            <button type="button" onclick="selectAllVisible()" class="btn btn-secondary btn-small">Select All Visible</button>
+                            <button type="button" onclick="deselectAll()" class="btn btn-secondary btn-small">Clear All</button>
+                            <button type="button" onclick="expandAllTopics()" class="btn btn-secondary btn-small">Expand All</button>
+                            <button type="button" onclick="collapseAllTopics()" class="btn btn-secondary btn-small">Collapse All</button>
                         </div>
                     </div>
                 </div>
-                <div id="questions-list"></div>
+
+                <div id="questions-list" class="questions-list-container"></div>
             </div>
-            <button type="submit" class="btn btn-primary">Create Quiz</button>
-        </form>
+
+            <!-- Create Button (Sticky) -->
+            <div class="quiz-submit-section">
+                <button type="submit" form="create-quiz-form" class="btn btn-primary btn-large">Create Quiz</button>
+            </div>
         </div>
     </div>
     
@@ -188,7 +210,7 @@ async function loadAllQuestions() {
         updateSelectedCount();
         
         // Add event listeners to all checkboxes for count updates
-        document.querySelectorAll('#questions-list input[type="checkbox"]').forEach(cb => {
+        document.querySelectorAll('#questions-list .question-checkbox-input').forEach(cb => {
             cb.addEventListener('change', updateSelectedCount);
         });
     } catch (error) {
@@ -238,7 +260,8 @@ function collapseAllTopics() {
 
 function selectAllInTopic(topicKey) {
     const topicDiv = document.getElementById(topicKey);
-    const checkboxes = topicDiv.querySelectorAll('input[type="checkbox"]');
+    if (!topicDiv) return;
+    const checkboxes = topicDiv.querySelectorAll('.question-checkbox-input');
     const allChecked = Array.from(checkboxes).every(cb => cb.checked);
     
     checkboxes.forEach(cb => {
@@ -303,19 +326,22 @@ function renderQuestions() {
                             </small>
                         </div>
                     </div>
-                    <button type="button" onclick="event.stopPropagation(); selectAllInTopic('${topicKey}')" class="btn btn-secondary btn-small">Select All</button>
+                    <button type="button" onclick="event.stopPropagation(); selectAllInTopic('${topicKey}')" class="btn btn-secondary btn-small" style="flex-shrink: 0;">Select All</button>
                 </div>
                 <div class="topic-questions" id="${topicKey}">
-                    ${topicData.description ? `<p style="padding: 0.5rem 1rem; color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 0.5rem;">${topicData.description}</p>` : ''}
-                    ${topicData.questions.map((q, idx) => `
-                        <div class="question-checkbox">
-                            <input type="checkbox" id="q-${q.id}" value="${q.id}" class="topic-${topicData.id}-question" onchange="updateSelectedCount()">
-                            <label for="q-${q.id}">
-                                <strong>Q${idx + 1}:</strong> ${q.question_text}
-                                <small>(${q.answers.length} answers)</small>
+                    ${topicData.description ? `<p class="topic-description">${topicData.description}</p>` : ''}
+                    <div class="questions-grid">
+                        ${topicData.questions.map((q, idx) => `
+                            <label class="question-item" for="q-${q.id}">
+                                <input type="checkbox" id="q-${q.id}" value="${q.id}" class="question-checkbox-input" onchange="updateSelectedCount()">
+                                <span class="question-content">
+                                    <span class="question-number">Q${idx + 1}</span>
+                                    <span class="question-text">${q.question_text}</span>
+                                    <span class="question-meta">${q.answers.length} answers</span>
+                                </span>
                             </label>
-                        </div>
-                    `).join('')}
+                        `).join('')}
+                    </div>
                 </div>
             </div>
         `;
@@ -338,7 +364,7 @@ function renderQuestions() {
     }
     
     // Re-attach event listeners
-    document.querySelectorAll('#questions-list input[type="checkbox"]').forEach(cb => {
+    document.querySelectorAll('#questions-list .question-checkbox-input').forEach(cb => {
         cb.addEventListener('change', updateSelectedCount);
     });
 }
@@ -349,19 +375,45 @@ function filterQuestions() {
 }
 
 function updateSelectedCount() {
-    const allCheckboxes = document.querySelectorAll('#questions-list input[type="checkbox"]:not([style*="display: none"])');
+    const allCheckboxes = document.querySelectorAll('#questions-list .question-checkbox-input:not([style*="display: none"])');
     const selectedCount = Array.from(allCheckboxes).filter(cb => cb.checked).length;
     const countElement = document.getElementById('selected-number');
     if (countElement) {
         countElement.textContent = selectedCount;
+        // Update visual feedback
+        const statItem = countElement.closest('.stat-item');
+        if (statItem) {
+            if (selectedCount > 0) {
+                statItem.classList.add('has-selection');
+            } else {
+                statItem.classList.remove('has-selection');
+            }
+        }
     }
 }
+
+function selectAllVisible() {
+    const allCheckboxes = document.querySelectorAll('#questions-list .question-checkbox-input:not([style*="display: none"])');
+    allCheckboxes.forEach(cb => cb.checked = true);
+    updateSelectedCount();
+}
+
+function deselectAll() {
+    const allCheckboxes = document.querySelectorAll('#questions-list .question-checkbox-input');
+    allCheckboxes.forEach(cb => cb.checked = false);
+    updateSelectedCount();
+}
+
+// Make functions available globally
+window.selectAllVisible = selectAllVisible;
+window.deselectAll = deselectAll;
+window.selectAllInTopic = selectAllInTopic;
 
 // Create quiz form
 document.getElementById('create-quiz-form').addEventListener('submit', async function(e) {
     e.preventDefault();
     
-    const selectedQuestions = Array.from(document.querySelectorAll('#questions-list input[type="checkbox"]:checked'))
+    const selectedQuestions = Array.from(document.querySelectorAll('#questions-list .question-checkbox-input:checked'))
         .map(cb => parseInt(cb.value));
     
     if (selectedQuestions.length === 0) {
