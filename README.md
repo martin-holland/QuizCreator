@@ -1,6 +1,12 @@
 # Quiz Application
 
-A Flask-based quiz application that uses AI to generate questions from various sources (URLs, PDFs, Word documents, images).
+🌐 **Live Application**: [https://quizcreator-ivtn.onrender.com/](https://quizcreator-ivtn.onrender.com/)
+
+A proof-of-concept lightweight Flask-based quiz application that demonstrates the possibility of generating test-based learning materials from a variety of sources (URLs, PDFs, Word documents, images).
+
+This application serves as a foundation that could be evolved or integrated into a larger learning platform, allowing students to create their own tests from various content sources. Additional source types could be added in future iterations, and the system could be extended with additional rules and possibilities for different types of questions.
+
+The AI integration is intentionally lightweight and optimized for low token usage, making it cost-effective while still providing quality question generation.
 
 ## Features
 
@@ -137,42 +143,17 @@ The app will run on `http://localhost:5001`
 
 **Important:** If you have a shell alias for `python` pointing to system Python, use `python3` instead. The venv Python has all required packages installed.
 
-## Deployment
+## Deployment Notes
 
-### Google Cloud Platform (GCP) Deployment
+### Render Platform Limitation
 
-The application is ready to deploy to Google Cloud Build and Cloud Run with minimal configuration.
+**Current Issue**: On Render, Playwright Chromium cannot be easily installed due to Render's configuration constraints. This means that parsing JavaScript-rendered web pages is currently limited or difficult on the deployed version.
 
-**Quick Start:**
+**Impact**: Some web pages that rely heavily on JavaScript for content rendering may not be parsed correctly when the application is deployed on Render.
 
-1. **Set up secrets** (one-time setup):
+**Future Solution**: This limitation will be addressed in future iterations of the application.
 
-   ```bash
-   ./setup-gcp-secrets.sh
-   ```
-
-2. **Build and deploy**:
-
-   ```bash
-   # Build container
-   gcloud builds submit --config cloudbuild.yaml
-
-   # Deploy to Cloud Run
-   gcloud run deploy quiz-app \
-     --image gcr.io/$(gcloud config get-value project)/quiz-app:latest \
-     --region us-central1 \
-     --set-secrets SECRET_KEY=secret-key:latest,OPENAI_API_KEY=openai-api-key:latest
-   ```
-
-**Features:**
-
-- ✅ SQLite database runs in the same container (no external database needed)
-- ✅ All dependencies (Tesseract, Playwright) included in container
-- ✅ Secrets managed via Google Secret Manager
-- ✅ Automatic scaling with Cloud Run
-- ✅ Zero-downtime deployments
-
-**For detailed instructions, see [GCP_DEPLOYMENT.md](GCP_DEPLOYMENT.md)**
+**Local Development**: This limitation does not affect local development, where Playwright Chromium can be installed normally using `playwright install chromium`.
 
 ## Usage
 
@@ -285,7 +266,11 @@ The app uses **SQLite database** (`quiz_app.db`) - SQLite is built into Python, 
 ## Future Enhancements
 
 - Database migration (MongoDB/Supabase/Firebase)
+- Use Python for backend, React for frontend
 - User authentication
 - Question editing
 - Export quizzes
 - Analytics and statistics
+- Additional sources of information eg: ebooks
+- Broaden the number of questions that can be generated
+- Create entire exams from a selection of sources
