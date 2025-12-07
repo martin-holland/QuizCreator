@@ -137,6 +137,43 @@ The app will run on `http://localhost:5001`
 
 **Important:** If you have a shell alias for `python` pointing to system Python, use `python3` instead. The venv Python has all required packages installed.
 
+## Deployment
+
+### Google Cloud Platform (GCP) Deployment
+
+The application is ready to deploy to Google Cloud Build and Cloud Run with minimal configuration.
+
+**Quick Start:**
+
+1. **Set up secrets** (one-time setup):
+
+   ```bash
+   ./setup-gcp-secrets.sh
+   ```
+
+2. **Build and deploy**:
+
+   ```bash
+   # Build container
+   gcloud builds submit --config cloudbuild.yaml
+
+   # Deploy to Cloud Run
+   gcloud run deploy quiz-app \
+     --image gcr.io/$(gcloud config get-value project)/quiz-app:latest \
+     --region us-central1 \
+     --set-secrets SECRET_KEY=secret-key:latest,OPENAI_API_KEY=openai-api-key:latest
+   ```
+
+**Features:**
+
+- ✅ SQLite database runs in the same container (no external database needed)
+- ✅ All dependencies (Tesseract, Playwright) included in container
+- ✅ Secrets managed via Google Secret Manager
+- ✅ Automatic scaling with Cloud Run
+- ✅ Zero-downtime deployments
+
+**For detailed instructions, see [GCP_DEPLOYMENT.md](GCP_DEPLOYMENT.md)**
+
 ## Usage
 
 ### 1. Submit a Source

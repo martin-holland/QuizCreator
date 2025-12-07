@@ -60,8 +60,12 @@ COPY . .
 # Create upload directory (using temp directory for compatibility)
 RUN mkdir -p /tmp/quiz_app_uploads
 
-# Expose port (Render sets PORT env var automatically)
-EXPOSE 5000
+# Create directory for SQLite database and ensure it's writable
+# SQLite will be created in /app/quiz_app.db (default location)
+RUN mkdir -p /app && chmod 755 /app
+
+# Expose port (Cloud Run sets PORT env var automatically, default is 8080)
+EXPOSE 8080
 
 # Copy and make startup script executable
 COPY start.sh /app/start.sh

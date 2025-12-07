@@ -1,0 +1,55 @@
+steps:
+  # Build the container image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/quiz-app:$COMMIT_SHA'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/quiz-app:latest'
+      - '.'
+    id: 'build-image'
+
+  # Push the container image to Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/quiz-app:$COMMIT_SHA'
+    id: 'push-image-commit'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/quiz-app:latest'
+    id: 'push-image-latest'
+
+  # Deploy to Cloud Run (optional - uncomment if you want automatic deployment)
+  # - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  #   entrypoint: gcloud
+  #   args:
+  #     - 'run'
+  #     - 'deploy'
+  #     - 'quiz-app'
+  #     - '--image'
+  #     - 'gcr.io/$PROJECT_ID/quiz-app:$COMMIT_SHA'
+  #     - '--region'
+  #     - 'us-central1'
+  #     - '--platform'
+  #     - 'managed'
+  #     - '--allow-unauthenticated'
+  #     - '--set-env-vars'
+  #     - 'FLASK_ENV=production'
+  #     - '--set-secrets'
+  #     - 'SECRET_KEY=secret-key:latest,OPENAI_API_KEY=openai-api-key:latest'
+  #   id: 'deploy-cloud-run'
+
+images:
+  - 'gcr.io/$PROJECT_ID/quiz-app:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/quiz-app:latest'
+
+options:
+  machineType: 'E2_HIGHCPU_8'
+  logging: CLOUD_LOGGING_ONLY
+
+timeout: '1200s'
+

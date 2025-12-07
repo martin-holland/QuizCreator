@@ -1,12 +1,12 @@
 #!/bin/bash
-# Startup script for Render deployment
-# Render sets $PORT automatically and it works with shell expansion
+# Startup script for Cloud Run / Render deployment
+# Cloud Run and Render set $PORT automatically and it works with shell expansion
 
 set -e
 
-# Use PORT from environment (Render sets this automatically)
-# Default to 5000 if not set (shouldn't happen on Render)
-PORT=${PORT:-5000}
+# Use PORT from environment (Cloud Run/Render sets this automatically)
+# Default to 8080 (Cloud Run standard) or 5000 (Render standard) if not set
+PORT=${PORT:-8080}
 
 echo "Starting gunicorn on port: $PORT"
 
